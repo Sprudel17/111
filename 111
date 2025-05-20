@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Nexus Blog Beitrag</title>
+  <style>
+    body {
+      background: #111;
+      color: white;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      color: #0af;
+    }
+    .terminal {
+      display: none;
+      background: #222;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+    input, textarea, select, button {
+      display: block;
+      margin-top: 10px;
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      font-size: 16px;
+    }
+    .category-section {
+      margin-top: 30px;
+    }
+    .category-title {
+      margin-bottom: 10px;
+      border-left: 5px solid #0af;
+      padding-left: 10px;
+      cursor: pointer;
+    }
+    .category-container {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding-bottom: 10px;
+    }
+    .post {
+      background: #1e1e1e;
+      flex: 0 0 300px;
+      padding: 15px;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    .post img {
+      width: 100%;
+      border-radius: 8px;
+      margin-bottom: 10px;
+    }
+    .views {
+      color: #0af;
+      font-size: 12px;
+      margin-top: 5px;
+    }
+    .overlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .overlay-content {
+      background: #222;
+      padding: 20px;
+      border-radius: 10px;
+      max-width: 600px;
+      max-height: 80%;
+      overflow-y: auto;
+    }
+    .overlay h3 {
+      margin-top: 0;
+      color: #0af;
+    }
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Nexus Blog Beitrag</h1>
+
+<div class="terminal" id="uploadTerminal">
+  <h2>Beitrag hochladen</h2>
+  <input id="author" placeholder="Name des Journalisten" />
+  <input id="title" placeholder="Titel des Beitrags" />
+  <textarea id="content" rows="6" placeholder="Beitrag schreiben..."></textarea>
+  <input type="file" id="image" accept="image/*" />
+  <select id="category">
+    <option value="aktuelles">Aktuelles</option>
+    <option value="gesellschaft">Gesellschaft</option>
+    <option value="wissen">Wissen</option>
+    <option value="berichte">Berichte</option>
+  </select>
+  <button onclick="uploadPost()">Veröffentlichen</button>
+</div>
+
+<div class="category-section">
+  <h2 class="category-title" onclick="showCategory('aktuelles')">Aktuelles</h2>
+  <div id="aktuelles" class="category-container"></div>
+
+  <h2 class="category-title" onclick="showCategory('gesellschaft')">Gesellschaft</h2>
+  <div id="gesellschaft" class="category-container"></div>
+
+  <h2 class="category-title" onclick="showCategory('wissen')">Wissen</h2>
+  <div id="wissen" class="category-container"></div>
+
+  <h2 class="category-title" onclick="showCategory('berichte')">Berichte</h2>
+  <div id="berichte" class="category-container"></div>
+</div>
+
+<div class="overlay" id="overlay" onclick="closeOverlay()">
+  <div class="overlay-content" id="overlayContent" onclick="event.stopPropagation()"></div>
+</div>
+
+<script>
+  let views = {};
+  let viewTimers = {};
+
+  function uploadPost() {
+    const author = document.getElementById('author').value.trim();
+    const title = document.getElementById('title').value.trim();
+    const content = document.getElementById('content').value.trim();
+    const category = document.getElementById('category').value;
+    const imageFile = document.getElementById('image').files[0];
+
+    if (!title || !content || !author) return alert("Bitte alle Felder ausfüllen.");
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const imgSrc = imageFile ? e.target.result : "";
+
+      const postId = Date.now();
+      views[postId] = 0;
+
+      const post = document.createElement('div');
+      post.className = "post";
+      post.innerHTML = `
+        ${imgSrc ? `<img src="${imgSrc}" />` : ""}
+        <strong>${author}</strong>
+        <h3>${title}</h3>
+        <p>${content.substring(0, 100)}...</p>
+        <div class="views" id="views-${postId}">Aufrufe: 0</div>
+      `;
+      post.addEventListener("click", () => showOverlay(title, content, imgSrc, author, postId));
+      post.addEventListener("mouseenter", () => startViewCount(postId));
+
+      document.getElementById(category).appendChild(post);
+      document.getElementById('author').value = '';
+      document.getElementById('title').value = '';
+      document.getElementById('content').value = '';
+      document.getElementById('image').value = '';
+    };
+
+    if (imageFile) {
+      reader.readAsDataURL(imageFile);
+    } else {
+      reader.onload(); // fallback ohne Bild
+    }
+  }
+
+  function startViewCount(id) {
+    if (viewTimers[id]) return;
+    viewTimers[id] = setTimeout(() => {
+      views[id]++;
+      document.getElementById(`views-${id}`).textContent = "Aufrufe: " + views[id];
+      clearTimeout(viewTimers[id]);
+      viewTimers[id] = null;
+    }, 10000);
+  }
+
+  function showOverlay(title, content, image, author, id) {
+    const overlay = document.getElementById("overlay");
+    const contentDiv = document.getElementById("overlayContent");
+    contentDiv.innerHTML = `
+      ${image ? `<img src="${image}" style="width:100%; border-radius:10px;" /><br><br>` : ""}
+      <strong>${author}</strong>
+      <h3>${title}</h3>
+      <p>${content}</p>
+      <div class="views">Aufrufe: ${views[id]}</div>
+    `;
+    overlay.style.display = "flex";
+  }
+
+  function closeOverlay() {
+    document.getElementById("overlay").style.display = "none";
+  }
+
+  function showCategory(cat) {
+    ['aktuelles', 'gesellschaft', 'wissen', 'berichte'].forEach(c => {
+      document.getElementById(c).style.flexDirection = (c === cat) ? 'column' : 'row';
+    });
+  }
+
+  // Tastenkombination Terminal
+  let buffer = '';
+  window.addEventListener("keydown", (e) => {
+    buffer += e.key.toUpperCase();
+    if (buffer.endsWith("ABC")) {
+      document.getElementById("uploadTerminal").style.display = "block";
+    }
+    if (buffer.endsWith("123")) {
+      document.getElementById("uploadTerminal").style.display = "none";
+    }
+    if (buffer.length > 5) buffer = buffer.slice(-5);
+  });
+</script>
+
+</body>
+</html>
